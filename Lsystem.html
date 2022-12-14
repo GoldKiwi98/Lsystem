@@ -1,0 +1,177 @@
+<!DOCTYPE html>
+<html>
+    <head>
+        <meta charset="UTF-8">
+        <title>Lシステム</title>
+        <script>
+            let canvas,context; //キャンパス
+            let x,y,angle; //位置、角度
+            let point = new Array(); //位置、角度（保存用）
+            let rule,a,d,num; //ルール、角度位置、進行距離、ステップ数
+            let step,index;
+            //サンプルデータ
+            samples = [
+                ["F",50,400,0,"F->F-F+F+F-F",90,20,3],
+                ["F",100,500,0,"F->F-F-F-ff,f->ff",120,50,4],
+                ["FA",300,300,0,"A->A+BF,B->FA-B",90,5,10],
+                ["X",300,600,-90,"X->F+[[X]-X]-F[-FX]+X,F->FF",25,5,5]
+            ];
+
+            const init = () => {
+                //キャンパスの取得
+                canvas = document.getElementById("image");
+                context = canvas.getContext("2d");
+                getSample(0);
+            }
+
+            const initPoint = () => {
+                //位置、角度の初期化
+                x = Number(document.getElementById("x0").value);
+                y = Number(document.getElementById("y0").value);
+                angle = Number(document.getElementById("a0").value);
+                point = [];
+            }
+
+            const startDraw = () => {
+                //初期化
+                context.clearRect(0,0,canvas.width,canvas.height);
+                rule = document.getElementById("rule0").value.replace(/\s+/g,"");
+                a = Number(document.getElementById("a").value);
+                d = Number(document.getElementById("d").value);
+                num = Number(document.getElementById("num").value);
+                initPoint();
+                document.getElementById("log").value = '[0]\n${rule}';
+                [step,index] = [0,0];
+                if(document.getElementById("last").checkd){
+                    for(let i=0; i<num; i++){
+                        generate();
+                    }
+                }
+                //描画
+                draw();
+            }
+
+            const generate = () => {
+                //ルールを生成
+                let rules = document.getElementById("rules").value.replace(/\s+/g,"");
+                rules = rules.split(",");
+                for(let i=0; i<rules.length; i++){
+                    rule = rule.replaceAll(rules[i].split("->")[0],'{${i}}');
+                }
+                for(let i=0; i<rules.length; i++){
+                    rule = rule.replaceAll('{${i}}',rules[i].split("->")[1]);
+                }
+                step++;
+                document.getElementById("log").value +='\n[$[step]]\n';
+                document.getElementById("log").value += rule;
+            }
+
+            const draw = () => {
+                //ルールを反映
+                const message = document.getElementById("message");
+                let endCheck = false;
+                if(iundex < rule.length){
+                    if(rule[index] == "F"){
+                        //直線を描画
+                        const h = index/rule.length * 360;
+                        const x1 = x + d * Math.cos(angle * Math.PI/180);
+                        const y1 = y + d * Math.sin(angle * Math.PI/180);
+                        context.strokeStyle = 'hs|(${h},100%,75%)';
+                        context.beginPath();
+                        context.moveTo(x,y);
+                        context.lineTo(x1,y1);
+                        context.stroke();
+                        [x,y] = [x1,y1];
+                    }else if(rule[index] == "f"){
+                        //移動
+                        x = x + d * Math.cos(angle * Math.PI/180);
+                        y = y + d * Math.sin(angle * Math.PI/180);
+                    }else if(rule[index] == "+"){
+                        //時計回りに回転
+                        angle += a;
+                    }else if(rule[index] == "-"){
+                        //反時計回りに回転
+                        angle -= a;
+                    }else if(rule[index] == "["){
+                        //位置、角度を保存
+                        point.push([x,y,angle]);
+                    }else if(rule[index] == "]"){
+                        //保存した位置、角度に戻る
+                        [x,y,angle] = point.pop();
+                    }
+                    index++;
+                    message.innerText = 'ステップ${step}: ${index}/${rule.length}';
+                }else {
+                    //次のステップ終了
+                    if(step < num) {
+                        index = 0;
+                        generate();
+                        initPoint();
+                    }else{
+                        message.innerText += "終了";
+                        endCheck = true;
+                    }
+                }
+                if(!endCheck){
+                    if(document.getElementById("hispeed").checked) {
+                        //高速描画
+                        if(index%1000 > 0){
+                            draw();
+                        }else{
+                            window.requestAnimationFrame(draw);
+                        }
+                    }else{
+                        window.requestAnimationFrame(draw);
+                    }
+                }
+            }
+
+            const setSample = n => {
+                //サンプルデータをリセット
+                document.getElementById("rule0").value = samples[n][0];
+                document.getElementById("x0").value = samples[n][1];
+                document.getElementById("y0").value = samples[n][2];
+                document.getElementById("a0").value = samples[n][3];
+                document.getElementById("rules").value = samples[n][4];
+                document.getElementById("a").value = samples[n][5];                
+                document.getElementById("d").value = samples[n][6];
+                document.getElementById("num").value = samples[n][7];
+
+            }
+        </script>
+        <style>
+            #message {color:#0000CC;}
+            input[type="text"]{width: 500px;}
+            input[type="number"]{width: 50px;}
+            canvas {background-color:#000000;}
+            textarea {
+                width:200px;
+                height: 600px;
+            }
+        </style>
+    </head>
+    <body onload="init()">
+        <p>Lsystem</p>
+        初期状態 : <input type="text"id="rule0"value=""><br>
+        開始位置 : (<input type="number"id="x0"value="0">
+        <input type="number"id="y0"value="0">)
+        開始角度 : <input type="number"id="a0"value="0">
+        <br>
+        変換ルール :<input typo="text"id="rules"value=""><br>
+        回転角度:<input type="number"id="a"value="0">
+        進行距離 :<input type="number"id="d"value="0">
+        ステップ数 :<input type="number"id="num"value="0">
+            <input type="checkbox"id="last"checked>最終ステップのみ描画
+            <hr>
+            <input type="button"value="サンプル1"onclick="setSample(0)">
+            <input type="button"value="サンプル2"onclick="setSample(1)">
+            <input type="button"value="サンプル3"onclick="setSample(2)">
+            <input type="button"value="サンプル4"onclick="setSample(3)">
+            <input type="button"value="描画"onclick="startDraw()">
+            <input type="checkbox"id="hispeed">高速
+            <span id="message"></span>
+            <hr>
+            <canvas id="image"width="600"heigth="600"></canvas>
+            <textarea id="log"></textarea>
+    </body>
+</html>
